@@ -1,0 +1,5 @@
+wgpriv: '{{ vault_wgpriv }}'
+wgpub: "DPqOppIwsq0v+B1ZWvVE+YF0WNZjCsKFAJiv3HIYqzI="
+wgpeers:
+  - vpn-gw-global
+wgip: "10.5.0.2"

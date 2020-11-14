@@ -1,0 +1,43 @@
+---
+- name: ensure wg is installed
+  apt:
+    pkg: "{{ item }}"
+    update_cache: yes
+    state: present
+  with_items:
+    - wireguard
+    - wireguard-tools
+    - resolvconf
+  tags: install
+
+- name: ensure /etc/wireguard is created
+  file:
+    path: /etc/wireguard
+    state: directory
+    mode: 0600
+  tags: install
+
+- name: setup wg0 interface
+  template:
+    src: templates/etc/wireguard/wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    owner: root
+    group: root
+    mode: 0600
+  tags: install
+
+#- name: setup firewall. Block all allow only necessary
+
+- name: deploy pubkey to peers
+  blockinfile:
+    path: /etc/wireguard/wg0.conf
+    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ ansible_hostname  }}"
+    block: |
+      [Peer]
+      #{{ host }}
+      PublicKey={{ wgpub }}
+      AllowedIPs=192.168.10.0/24, 192.168.20.0/24
+      Endpoint={{ hostvars[host]['ansible_host'] }}
+    delegate_to: "{{ item }}"
+    with_items: {{ peers }}
+  tags: deploy2peers
