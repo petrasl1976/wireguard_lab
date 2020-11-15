@@ -4,5 +4,5 @@ wgpriv: '{{ vault_wgpriv }}'
 wgclients:
   client: "192.168.10.0/24, 192.168.20.0/24"
 wggateways:
-  - vpn-gw-site-10
+#  - vpn-gw-site-10
   - vpn-gw-site-20
