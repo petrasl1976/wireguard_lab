@@ -1,6 +1,6 @@
 wgip: "10.5.0.1"
 wgpub: "h5wPr+FyaygmFfY4WsKvJtbtDBIwoobUNzRnv6wSjR8="
 wgpriv: '{{ vault_wgpriv }}'
-wgallow: "192.168.10.0/24"
+wgallow: "{{ wgip }}, 192.168.10.0/24"
 wgpeers:
   - vpn-gw-global

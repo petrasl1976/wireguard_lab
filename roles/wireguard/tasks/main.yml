@@ -51,7 +51,7 @@
     name: wg-quick@wg0
     enabled: yes
 
-- name: deploy pubkey to peers
+- name: deploy pubkey to peers (clients)
   blockinfile:
     path: /etc/wireguard/wg0.conf
     create: yes
@@ -61,7 +61,22 @@
       PublicKey={{ wgpub }}
       AllowedIPs={{ wgallow }}
       Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}:51820
+  when: gateways is not defined or item not in gateways
   delegate_to: "{{ item }}"
   with_items: "{{ wgpeers }}"
-  notify: restart_wg
+  tags: peers
+
+- name: deploy pubkey to peers (gateways)
+  blockinfile:
+    path: /etc/wireguard/wg0.conf
+    create: yes
+    marker: "# {mark} BLOCK {{ ansible_hostname }}"
+    block: |
+      [Peer]
+      PublicKey={{ wgpub }}
+      AllowedIPs={{ wgip }}
+      Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}:51820
+  when: gateways is defined and item in gateways 
+  delegate_to: "{{ item }}"
+  with_items: "{{ wgpeers }}"
   tags: peers
