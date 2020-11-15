@@ -1,8 +1,10 @@
 # wireguard_lab
 
-This role setups wireguard on host and deploys its public key and available subnets to peers
+This role setups wireguard on host and deploys its public key and available subnets to its peers.
 
- * Prepare private and pub keys for each host:
+To setup wire4guard on the host we need to know in advance couple things like peer public key, peer wireguard ip, subnets available behind peer. So to setup environment we will create variable set for each host accordingly.
+
+ * Command below could be used to generate WG key pair:
 ```
 priv=$(wg genkey)
 pub=$(wg pubkey <<< $priv)
@@ -20,32 +22,32 @@ wggateways:
   - vpn-gw-site-10
   - vpn-gw-site-20
 ```
+
 In the example above:
+wgip       - ip for wireguard. Each wireguard peer should have unique ip.
+wgpub      - public wireguard key
+wgpriv     - link to private wireguard key. Actual key located in vault.
+wgclients  - to hosts dict listed below extra routes will be pushed.
+wggateways - to hosts list listetd below no extra routes will be pushed. 
 
-wgip - ip for wireguard. Each particiopant should have its own.
-
-wgpub - public wireguard key for this host
-
-wgpriv - private wireguard key for this host. It is located in vault.
-
-wgclients - host clients. Extra routes will be pushed.
-
-wggateways - host gateways. No routes will be pushed. 
-
- * Put private key to host_vars/<host>/vault_wg:
+ * With command below private keys could be stored in host_vars/host/vault_wg:
 ```
-ansible-vault create ...
+ansible-vault create host_vars/vpn-gw-global/vault_wg
 ```
 
- * Run playbook:
+ * Run playbook. It will setup WG on all hosts in wireguard hostgroup:
 ```
 ansible-playbook wireguard.yml
 ```
 
- * Hosts behind vpn should have extra route to WG gateway. Run playbook:
+ * Hosts behind WG gateway should have extra route to it (if it is not default). Run playbook:
 ```
 ansible-playbook sitehosts.yml
 ```
 
 TODO:
- * need to trigger wg restart when [peer] added on delegated host. Dont know how to do this for now... Workaround - restart wg-quick@wg0 on hosts to reread config.
+ * Need to trigger WG restart when peer config added on delegated host. Dont know how to do this for now... Workaround - reread config:
+ ```
+ asystemctl restart wg-quick@wg0
+ ```
+
