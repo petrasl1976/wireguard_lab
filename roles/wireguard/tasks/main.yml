@@ -1,43 +1,66 @@
 ---
-- name: ensure wg is installed
-  apt:
-    pkg: "{{ item }}"
-    update_cache: yes
-    state: present
-  with_items:
-    - wireguard
-    - wireguard-tools
-    - resolvconf
-  tags: install
-
-- name: ensure /etc/wireguard is created
+- name: ensure /etc/wireguard is created locally and all peers
   file:
     path: /etc/wireguard
     state: directory
-    mode: 0600
-  tags: install
+    mode: 0700
+  delegate_to: "{{ item }}"
+  with_items: 
+    - "{{ ansible_hostname }}"
+    - "{{ wgpeers }}"
+
+- name: ensure wg is installed
+  apt:
+    update_cache: yes
+    state: present
+    pkg:
+      - wireguard
+      - wireguard-tools
+      - resolvconf
+
+- sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
 
 - name: setup wg0 interface
-  template:
-    src: templates/etc/wireguard/wg0.conf.j2
-    dest: /etc/wireguard/wg0.conf
+  blockinfile:
+    path: /etc/wireguard/wg0.conf
+    create: yes
     owner: root
     group: root
     mode: 0600
-  tags: install
+    marker: "# {mark} BLOCK interface"
+    block: |
+      [Interface]
+      Address = {{ wgip }}
+      DNS = 1.1.1.1
+      ListenPort = 51820
+      PrivateKey = {{ wgpriv }}
+      PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+      PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+  no_log: true
+  notify: restart_wg
+  tags: interface
 
-#- name: setup firewall. Block all allow only necessary
+- name: Enable service httpd, and not touch the state
+  service:
+    name: wg-quick@wg0
+    enabled: yes
 
 - name: deploy pubkey to peers
   blockinfile:
     path: /etc/wireguard/wg0.conf
-    marker: "# {mark} ANSIBLE MANAGED BLOCK {{ ansible_hostname  }}"
+    create: yes
+    marker: "# {mark} BLOCK {{ ansible_hostname }}"
     block: |
       [Peer]
-      #{{ host }}
       PublicKey={{ wgpub }}
       AllowedIPs=192.168.10.0/24, 192.168.20.0/24
-      Endpoint={{ hostvars[host]['ansible_host'] }}
-    delegate_to: "{{ item }}"
-    with_items: {{ peers }}
-  tags: deploy2peers
+      Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}
+  delegate_to: "{{ item }}"
+  with_items: "{{ wgpeers }}"
+  notify: restart_wg
+  tags: peers

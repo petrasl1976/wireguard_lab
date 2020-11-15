@@ -1,7 +1,7 @@
-wgpriv: '{{ vault_wgpriv }}'
+wgip: "10.5.0.3"
 wgpub: "cQvVqtQQxrrBwNFmWF/fH3Jm2q/s10XL2xNnvzUN6wk="
+wgpriv: '{{ vault_wgpriv }}'
 wgpeers:
   - vpn-gw-site-10
   - vpn-gw-site-20
-  - vpn-gw-global
-wgip: "10.5.0.3"
+  - client
