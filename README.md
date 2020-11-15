@@ -1,6 +1,6 @@
 # wireguard_lab
 
-This role setups wireguard on host and deploys its public key to peers listed in host_vars.
+This role setups wireguard on host and deploys its public key and available subnets to peers
 
  * Prepare private and pub keys for each host:
 ```
@@ -10,39 +10,42 @@ echo $priv $pub
 ```
 
  * Define host_vars for each host:
-
 ```
 wgip: "10.5.0.3"
 wgpub: "cQvVqtQQxrrBwNFmWF/fH3Jm2q/s10XL2xNnvzUN6wk="
 wgpriv: '{{ vault_wgpriv }}'
-wgallow: "{{ wgip }}, 192.168.10.0/24, 192.168.20.0/24"
-gateways:
+wgclients:
+  client: "192.168.10.0/24, 192.168.20.0/24"
+wggateways:
   - vpn-gw-site-10
   - vpn-gw-site-20
-wgpeers:
-  - vpn-gw-site-10
-  - vpn-gw-site-20
-  - client
 ```
+In the example above:
 
+wgip - ip for wireguard. Each particiopant should have its own.
 
- * Put private key to host_vars/vault_wg:
+wgpub - public wireguard key for this host
+
+wgpriv - private wireguard key for this host. It is located in vault.
+
+wgclients - host clients. Extra routes will be pushed.
+
+wggateways - host gateways. No routes will be pushed. 
+
+ * Put private key to host_vars/<host>/vault_wg:
 ```
 ansible-vault create ...
 ```
 
  * Run playbook:
 ```
-ansible-playbook wireguard.yml -e "hosts=wireguard" -l client # just for single host
-ansible-playbook wireguard.yml -e "hosts=wireguard"           # or all hosts in wireguard hostgroup
+ansible-playbook wireguard.yml
 ```
 
- * On hosts behind vpn add accordingly:
+ * Hosts behind vpn should have extra route to WG gateway. Run playbook:
 ```
-ip r add 10.5.0.0/24 via <vpn-gw-ip>
+ansible-playbook sitehosts.yml
 ```
 
 TODO:
- * need to trigger wg restart when [peer] part added to delegated host
- * ping from client reaches global gw, but not further. Meanwhile global gw able to ping hosts behind local gw
- * define gateway "subnets" in its own config rather than "wgallow" on target host
+ * need to trigger wg restart when [peer] added on delegated host. Dont know how to do this for now... Workaround - restart wg-quick@wg0 on hosts to reread config.

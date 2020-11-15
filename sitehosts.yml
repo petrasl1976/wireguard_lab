@@ -1,0 +1,7 @@
+---
+- hosts: sitehosts
+  gather_facts: true
+  tasks:
+    - name: configure static route for traffic from WG gateway
+      shell: /usr/sbin/ip r|/usr/bin/grep '{{ item }}' || /usr/sbin/ip r add {{ item }}
+      with_items: "{{ wgroutes }}"

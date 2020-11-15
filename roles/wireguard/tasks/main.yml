@@ -1,5 +1,5 @@
 ---
-- name: ensure /etc/wireguard is created locally and all peers
+- name: ensure /etc/wireguard is created locally and on all gateways
   file:
     path: /etc/wireguard
     state: directory
@@ -7,9 +7,19 @@
   delegate_to: "{{ item }}"
   with_items: 
     - "{{ ansible_hostname }}"
-    - "{{ wgpeers }}"
+    - "{{ wggateways | default([]) }}"
 
-- name: ensure wg is installed
+- name: ensure /etc/wireguard is created on clients (workaround for undefined wgclients)
+  file:
+    path: /etc/wireguard
+    state: directory
+    mode: 0700
+  when: wgclients is defined
+  delegate_to: "{{ item }}"
+  with_items:
+    - "{{ wgclients.keys() | list }}"
+
+- name: ensure wg and related packages are installed
   apt:
     update_cache: yes
     state: present
@@ -18,7 +28,7 @@
       - wireguard-tools
       - resolvconf
 
-- name: allow ipv4 forwarding on host
+- name: enable ipv4 forwarding
   sysctl:
     name: net.ipv4.ip_forward
     value: '1'
@@ -33,15 +43,15 @@
     owner: root
     group: root
     mode: 0600
-    marker: "# {mark} BLOCK interface"
+    marker: "# {mark} {{ ansible_hostname }} interface block"
     block: |
       [Interface]
       Address = {{ wgip }}
       DNS = 1.1.1.1
       ListenPort = 51820
       PrivateKey = {{ wgpriv }}
-      PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-      PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+      PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; iptables -t nat -A POSTROUTING -o wg -j MASQUERADE
+      PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; iptables -t nat -D POSTROUTING -o wg -j MASQUERADE
   no_log: true
   notify: restart_wg
   tags: interface
@@ -51,22 +61,22 @@
     name: wg-quick@wg0
     enabled: yes
 
-- name: deploy pubkey to peers (clients)
+- name: deploy pubkey and subnets to clients
   blockinfile:
     path: /etc/wireguard/wg0.conf
     create: yes
-    marker: "# {mark} BLOCK {{ ansible_hostname }}"
+    marker: "# {mark} {{ ansible_hostname }} block"
     block: |
       [Peer]
       PublicKey={{ wgpub }}
-      AllowedIPs={{ wgallow }}
+      AllowedIPs={{ wgclients[item] }}, {{ wgip }}
       Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}:51820
-  when: gateways is not defined or item not in gateways
   delegate_to: "{{ item }}"
-  with_items: "{{ wgpeers }}"
-  tags: peers
+  with_items: "{{ wgclients.keys() | list }}"
+  when: wgclients is defined
+  tags: clients
 
-- name: deploy pubkey to peers (gateways)
+- name: deploy pubkey to gateways
   blockinfile:
     path: /etc/wireguard/wg0.conf
     create: yes
@@ -76,7 +86,7 @@
       PublicKey={{ wgpub }}
       AllowedIPs={{ wgip }}
       Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}:51820
-  when: gateways is defined and item in gateways 
   delegate_to: "{{ item }}"
-  with_items: "{{ wgpeers }}"
-  tags: peers
+  with_items: "{{ wggateways }}"
+  when: wggateways is defined
+  tags: gateways
