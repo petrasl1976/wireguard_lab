@@ -26,5 +26,6 @@ ansible-vault create ...
 
  * Run playbook:
 ```
-ansible-playbook wireguard.yml -e "hosts=wireguard" -l client -CD
+ansible-playbook wireguard.yml -e "hosts=wireguard" -l client # just for single host
+ansible-playbook wireguard.yml -e "hosts=wireguard"           # or all hosts in wireguard hostgroup
 ```

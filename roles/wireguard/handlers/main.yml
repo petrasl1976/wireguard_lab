@@ -1,4 +1,7 @@
 - name: restart_wg
   ansible.builtin.service:
-    name: wg-quick@vg0
+    name: wg-quick@wg0
     state: restarted
+  ignore_errors: yes
+  #register: result
+  #failed_when: "Unable to find port of endpoint"

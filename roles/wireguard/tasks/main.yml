@@ -18,7 +18,8 @@
       - wireguard-tools
       - resolvconf
 
-- sysctl:
+- name: allow ipv4 forwarding on host
+  sysctl:
     name: net.ipv4.ip_forward
     value: '1'
     sysctl_set: yes
@@ -45,7 +46,7 @@
   notify: restart_wg
   tags: interface
 
-- name: Enable service httpd, and not touch the state
+- name: Enable wg-quick@wg0 service
   service:
     name: wg-quick@wg0
     enabled: yes
@@ -58,8 +59,8 @@
     block: |
       [Peer]
       PublicKey={{ wgpub }}
-      AllowedIPs=192.168.10.0/24, 192.168.20.0/24
-      Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}
+      AllowedIPs={{ wgallow }}
+      Endpoint={{ hostvars[inventory_hostname]['ansible_host'] }}:51820
   delegate_to: "{{ item }}"
   with_items: "{{ wgpeers }}"
   notify: restart_wg
