@@ -24,11 +24,17 @@ wggateways:
 ```
 
 In the example above:
+
 wgip       - ip for wireguard. Each wireguard peer should have unique ip.
+
 wgpub      - public wireguard key
+
 wgpriv     - link to private wireguard key. Actual key located in vault.
+
 wgclients  - to hosts dict listed below extra routes will be pushed.
+
 wggateways - to hosts list listetd below no extra routes will be pushed. 
+
 
  * With command below private keys could be stored in host_vars/host/vault_wg:
 ```
